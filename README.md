@@ -4,11 +4,11 @@
 [![Python](https://img.shields.io/badge/Python-3.10--3.13-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-[GCPO: Diagnosing and Constraining Subspace Geometry in Rollout RL for LLMs](https://arxiv.org/abs/2608.11674) introduces Geometry-Constrained Policy Optimization, a post-training method that keeps policy updates away from principal subspaces of a frozen base model. This repository provides the open-source GCPO implementation on top of [verl](https://github.com/volcengine/verl), together with basis preparation, data preprocessing, and launch scripts for GRPO- and SDPO-style training.
+[GCPO: Diagnosing and Constraining Subspace Geometry in Rollout RL for LLMs](https://arxiv.org/abs/2608.11674) introduces Geometrically Constrained Policy Optimization, a post-training method that keeps policy updates away from principal subspaces of a frozen base model. This repository provides the open-source GCPO implementation on top of [verl](https://github.com/volcengine/verl), together with basis preparation, data preprocessing, and launch scripts for GRPO- and SDPO-style training.
 
-![Teaser figure showing GCPO constraining LoRA updates away from dominant frozen-model subspaces during rollout RL for large language models](assets/gcpo-teaser.png)
+![Teaser figure with six diagnostic panels comparing Qwen3-8B on GSM8K and GLM4-9B on MATH500: subspace-block enrichment heatmaps, layer-wise transient-overlap heatmaps, and global overlap-versus-validation trajectories across training steps](assets/gcpo-teaser.png)
 
-*Figure: GCPO constrains LoRA policy updates with a frozen-model subspace basis to improve rollout-RL stability and efficiency.*
+*Figure: Six diagnostic panels summarize stepwise update overlap and validation performance for Qwen3-8B on GSM8K and GLM4-9B on MATH500, showing that higher overlap coincides with worse observed validation checkpoints in these runs.*
 
 ## 1. Overview
 
