@@ -1,10 +1,10 @@
-# GCPO
+# [GCPO: Diagnosing and Constraining Subspace Geometry in Rollout RL for LLMs](https://arxiv.org/abs/2608.11674)
 
 [![arXiv](https://img.shields.io/badge/arXiv-2608.11674-b31b1b.svg)](https://arxiv.org/abs/2608.11674)
 [![Python](https://img.shields.io/badge/Python-3.10--3.13-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-[GCPO: Diagnosing and Constraining Subspace Geometry in Rollout RL for LLMs](https://arxiv.org/abs/2608.11674) introduces Geometrically Constrained Policy Optimization, a post-training method that keeps policy updates away from principal subspaces of a frozen base model. This repository provides the open-source GCPO implementation on top of [verl](https://github.com/volcengine/verl), together with basis preparation, data preprocessing, and launch scripts for GRPO- and SDPO-style training.
+GCPO introduces Geometrically Constrained Policy Optimization, a post-training method that keeps policy updates away from principal subspaces of a frozen base model. This repository provides the open-source GCPO implementation on top of [verl](https://github.com/volcengine/verl), together with basis preparation, data preprocessing, and launch scripts for GRPO- and SDPO-style training.
 
 ![Teaser figure with six diagnostic panels comparing Qwen3-8B on GSM8K and GLM4-9B on MATH500: subspace-block enrichment heatmaps, layer-wise transient-overlap heatmaps, and global overlap-versus-validation trajectories across training steps](assets/gcpo-teaser.png)
 
@@ -16,7 +16,7 @@ GCPO adds a geometry-aware constraint to rollout RL by projecting updates away f
 
 - basis construction for the protected subspace;
 - dataset loading, splitting, and parquet preprocessing utilities;
-- launchers for GRPO and SDPO configurations on local GPUs or Slurm; and
+- launchers for GRPO and SDPO configurations on local GPUs; and
 - the GCPO integration inside the verl training stack.
 
 For environment details and dependency guidance, see [INSTALL.md](INSTALL.md).
@@ -111,15 +111,7 @@ N_GPUS_PER_NODE=4 \
 bash experiments/gcpo/train_gcpo.sh
 ```
 
-### 4.4 Launch on Slurm
-
-Adapt the resource directives in `experiments/gcpo/submit_gcpo.sbatch`, export the same environment variables you would use locally, and then submit:
-
-```bash
-sbatch experiments/gcpo/submit_gcpo.sbatch
-```
-
-### 4.5 Main overrides
+### 4.4 Main overrides
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -132,7 +124,7 @@ sbatch experiments/gcpo/submit_gcpo.sbatch
 | `TOTAL_TRAINING_STEPS` | `300` | Number of policy updates |
 | `OUTPUT_DIR` | repository checkpoint directory | Checkpoint destination |
 
-### 4.6 Logging and dry runs
+### 4.5 Logging and dry runs
 
 Weights & Biases is optional. The launcher logs only to the console unless `WANDB_API_KEY` is already present in the environment.
 
@@ -169,14 +161,7 @@ docker run --rm -it \
 
 In this example, `/path/to/...` paths are host paths. Inside the container, the source checkout is mounted at `/app`, matching the image's built-in working tree and editable install location. The Hugging Face cache is available at `/root/.cache/huggingface`, datasets at `/app/datasets`, basis artifacts at `/app/artifacts`, and checkpoints at `/app/checkpoints`.
 
-## 6. Implementation
-
-- `verl/utils/gcpo.py`: constrained LoRA parameterization and rollout export.
-- `scripts/prepare_gcpo_basis.py`: frozen-model SVD basis preparation.
-- `verl/workers/fsdp_workers.py`: actor and rollout integration.
-- `experiments/gcpo/`: portable preparation, training, and Slurm launchers.
-
-## 7. Citation
+## 6. Citation
 
 If you find GCPO useful in your research, please cite our paper:
 
@@ -189,6 +174,6 @@ If you find GCPO useful in your research, please cite our paper:
 }
 ```
 
-## 8. Acknowledgements
+## 7. Acknowledgements
 
-This codebase builds on verl and the SDPO implementation. Their original licenses and notices are preserved in the repository.
+This codebase builds on [verl](https://github.com/volcengine/verl) and the [SDPO](https://github.com/lasgroup/SDPO) implementation. Their original licenses and notices are preserved in the repository.
