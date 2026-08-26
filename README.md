@@ -158,16 +158,16 @@ docker run --rm -it \
   --network host \
   --ipc=host \
   --shm-size=16g \
-  -v /path/to/GCPO:/workspace \
+  -v /path/to/GCPO:/app \
   -v /path/to/huggingface-cache:/root/.cache/huggingface \
-  -v /path/to/datasets:/workspace/datasets \
-  -v /path/to/artifacts:/workspace/artifacts \
-  -v /path/to/checkpoints:/workspace/checkpoints \
-  -w /workspace \
+  -v /path/to/datasets:/app/datasets \
+  -v /path/to/artifacts:/app/artifacts \
+  -v /path/to/checkpoints:/app/checkpoints \
+  -w /app \
   gcpo:latest
 ```
 
-In this example, `/path/to/...` paths are host paths. Inside the container, the source checkout is available at `/workspace`, the Hugging Face cache at `/root/.cache/huggingface`, datasets at `/workspace/datasets`, basis artifacts at `/workspace/artifacts`, and checkpoints at `/workspace/checkpoints`.
+In this example, `/path/to/...` paths are host paths. Inside the container, the source checkout is mounted at `/app`, matching the image's built-in working tree and editable install location. The Hugging Face cache is available at `/root/.cache/huggingface`, datasets at `/app/datasets`, basis artifacts at `/app/artifacts`, and checkpoints at `/app/checkpoints`.
 
 ## 6. Implementation
 
