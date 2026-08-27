@@ -1,10 +1,10 @@
-# [GCPO: Diagnosing and Constraining Subspace Geometry in Rollout RL for LLMs](https://arxiv.org/abs/2608.11674)
+# GCPO: Diagnosing and Constraining Subspace Geometry in Rollout RL for LLMs
 
 [![arXiv](https://img.shields.io/badge/arXiv-2608.11674-b31b1b.svg)](https://arxiv.org/abs/2608.11674)
 [![Python](https://img.shields.io/badge/Python-3.10--3.13-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-GCPO introduces Geometrically Constrained Policy Optimization, a post-training method that keeps policy updates away from principal subspaces of a frozen base model. This repository provides the open-source GCPO implementation on top of [verl](https://github.com/volcengine/verl), together with basis preparation, data preprocessing, and launch scripts for GRPO- and SDPO-style training.
+[GCPO](https://arxiv.org/abs/2608.11674) introduces Geometrically Constrained Policy Optimization, a post-training method that keeps policy updates away from principal subspaces of a frozen base model. This repository provides the open-source GCPO implementation on top of [verl](https://github.com/volcengine/verl), together with basis preparation, data preprocessing, and launch scripts for GRPO- and SDPO-style training.
 
 ![Teaser figure with six diagnostic panels comparing Qwen3-8B on GSM8K and GLM4-9B on MATH500: subspace-block enrichment heatmaps, layer-wise transient-overlap heatmaps, and global overlap-versus-validation trajectories across training steps](assets/gcpo-teaser.png)
 
@@ -23,23 +23,17 @@ For environment details and dependency guidance, see [INSTALL.md](INSTALL.md).
 
 ## 2. Installation
 
-GCPO targets Linux with NVIDIA GPUs for practical LLM training. Python 3.10-3.13 is supported, and Python 3.12 is the recommended default.
+GCPO targets Linux with NVIDIA GPUs for practical LLM training. Python 3.10-3.13 is supported by the package metadata, and Python 3.12 is the recommended and container-tested default.
+
+The recommended installation uses the repository Dockerfile. It follows the [SDPO](https://github.com/lasgroup/SDPO) environment strategy and starts from NVIDIA's prebuilt vLLM image so that CUDA, PyTorch, vLLM, FlashAttention, FlashInfer, CUTLASS, xFormers, and Triton come from one compatible stack.
 
 ```bash
 git clone https://github.com/deepnovacore/GCPO.git
 cd GCPO
-
-conda create -n gcpo python=3.12 -y
-conda activate gcpo
-
-# Install a PyTorch build that matches your CUDA toolkit/driver.
-pip install torch
-
-# Install GCPO with the rollout and math dependencies used below.
-pip install -e ".[vllm,math]"
+docker build -t gcpo:latest .
 ```
 
-The training path uses vLLM by default, so PyTorch, CUDA, and vLLM must be mutually compatible. Pick the PyTorch wheel for your CUDA stack first, then install GCPO. Additional environment notes, optional FlashAttention, and verification commands are in [INSTALL.md](INSTALL.md).
+Do not independently upgrade or reinstall the GPU-stack packages inside this image. In particular, mixing an arbitrary FlashAttention wheel with a different CUTLASS DSL release can fail during vLLM model loading. See [INSTALL.md](INSTALL.md) for the verified version matrix, native-environment guidance, and verification commands.
 
 ## 3. Data Preparation
 
@@ -136,13 +130,13 @@ DRY_RUN=1 bash experiments/gcpo/train_gcpo.sh
 
 ## 5. Docker Quick Start
 
-The root `Dockerfile` builds a CUDA 12.4.1 / Python 3.12 image and installs GCPO with the default `vllm` and `math` extras:
+The root `Dockerfile` uses the multi-architecture `nvcr.io/nvidia/vllm:25.12.post1-py3` image also used by SDPO's GH200 setup. It preserves the image's matched GPU stack, installs the pinned upper-layer dependencies from `requirements-ngc.txt`, and then installs this repository with dependency resolution disabled:
 
 ```bash
 docker build -t gcpo:latest .
 ```
 
-Before running the container, install the NVIDIA Container Toolkit on the host and make sure the host driver, CUDA runtime, PyTorch build, and vLLM version are compatible with your GPUs. The commands below are intended as a practical starting point; they are not a claim of full local Docker build or 8B training validation across all environments.
+The base image publishes both `linux/amd64` and `linux/arm64` variants. Before running it, install the NVIDIA Container Toolkit and use a host driver compatible with the image's CUDA 13.1 runtime.
 
 ```bash
 docker run --rm -it \
@@ -150,16 +144,29 @@ docker run --rm -it \
   --network host \
   --ipc=host \
   --shm-size=16g \
+  --ulimit memlock=-1 \
+  --ulimit stack=67108864 \
   -v /path/to/GCPO:/app \
   -v /path/to/huggingface-cache:/root/.cache/huggingface \
   -v /path/to/datasets:/app/datasets \
   -v /path/to/artifacts:/app/artifacts \
   -v /path/to/checkpoints:/app/checkpoints \
   -w /app \
-  gcpo:latest
+  gcpo:latest \
+  /bin/bash
 ```
 
-In this example, `/path/to/...` paths are host paths. Inside the container, the source checkout is mounted at `/app`, matching the image's built-in working tree and editable install location. The Hugging Face cache is available at `/root/.cache/huggingface`, datasets at `/app/datasets`, basis artifacts at `/app/artifacts`, and checkpoints at `/app/checkpoints`.
+In this example, `/path/to/...` paths are host paths. Inside the container, the source checkout is mounted at `/app`, matching the image's built-in working tree and editable install location. The Hugging Face cache is available at `/root/.cache/huggingface`, datasets at `/app/datasets`, basis artifacts at `/app/artifacts`, and checkpoints at `/app/checkpoints`. Keep the cache mount writable because Hugging Face libraries create lock files and generated modules there.
+
+Verify the installed environment before preparing the basis or launching training:
+
+```bash
+python -m pip check
+python -c "import torch, vllm, flash_attn; print(torch.__version__, vllm.__version__, flash_attn.__version__)"
+python -m pip install pytest
+pytest -q tests/utils/test_gcpo.py
+DRY_RUN=1 bash experiments/gcpo/train_gcpo.sh
+```
 
 ## 6. Citation
 
@@ -177,3 +184,5 @@ If you find GCPO useful in your research, please cite our paper:
 ## 7. Acknowledgements
 
 This codebase builds on [verl](https://github.com/volcengine/verl) and the [SDPO](https://github.com/lasgroup/SDPO) implementation. Their original licenses and notices are preserved in the repository.
+
+> Jonas Hübotter et al., “[Reinforcement Learning via Self-Distillation](https://arxiv.org/abs/2601.20802),” arXiv:2601.20802, 2026.
