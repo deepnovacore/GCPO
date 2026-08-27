@@ -138,55 +138,29 @@ bash experiments/gcpo/train_gcpo.sh
 | `TOTAL_TRAINING_STEPS` | `300` | Number of policy updates |
 | `OUTPUT_DIR` | repository checkpoint directory | Checkpoint destination |
 
-### 4.5 Logging and dry runs
-
-Weights & Biases is optional. The launcher logs only to the console unless `WANDB_API_KEY` is already present in the environment.
-
-Set `DRY_RUN=1` to print the fully resolved launch command without checking for data/model artifacts or starting Ray:
-
-```bash
-DRY_RUN=1 bash experiments/gcpo/train_gcpo.sh
-```
-
 ## 5. Docker Quick Start
 
-The root `Dockerfile` uses the multi-architecture `nvcr.io/nvidia/vllm:25.12.post1-py3` image also used by SDPO's GH200 setup. It preserves the image's matched GPU stack, installs the pinned upper-layer dependencies from `requirements-ngc.txt`, and then installs this repository with dependency resolution disabled:
+The root `Dockerfile` follows SDPO's environment strategy and preserves the matched GPU stack from `nvcr.io/nvidia/vllm:25.12.post1-py3`. Build the image with:
 
 ```bash
 docker build -t gcpo:latest .
 ```
 
-The base image publishes both `linux/amd64` and `linux/arm64` variants. Before running it, install the NVIDIA Container Toolkit and use a host driver compatible with the image's CUDA 13.1 runtime.
+Install the NVIDIA Container Toolkit on the host, then start a GPU container with persistent mounts for model caches, datasets, artifacts, and checkpoints:
 
 ```bash
 docker run --rm -it \
   --gpus all \
   --network host \
   --ipc=host \
-  --shm-size=16g \
-  --ulimit memlock=-1 \
-  --ulimit stack=67108864 \
-  -v /path/to/GCPO:/app \
   -v /path/to/huggingface-cache:/root/.cache/huggingface \
   -v /path/to/datasets:/app/datasets \
   -v /path/to/artifacts:/app/artifacts \
   -v /path/to/checkpoints:/app/checkpoints \
-  -w /app \
-  gcpo:latest \
-  /bin/bash
+  gcpo:latest
 ```
 
-In this example, `/path/to/...` paths are host paths. Inside the container, the source checkout is mounted at `/app`, matching the image's built-in working tree and editable install location. The Hugging Face cache is available at `/root/.cache/huggingface`, datasets at `/app/datasets`, basis artifacts at `/app/artifacts`, and checkpoints at `/app/checkpoints`. Keep the cache mount writable because Hugging Face libraries create lock files and generated modules there.
-
-Verify the installed environment before preparing the basis or launching training:
-
-```bash
-python -m pip check
-python -c "import torch, vllm, flash_attn; print(torch.__version__, vllm.__version__, flash_attn.__version__)"
-python -m pip install pytest
-pytest -q tests/utils/test_gcpo.py
-DRY_RUN=1 bash experiments/gcpo/train_gcpo.sh
-```
+Replace each `/path/to/...` entry with a writable host path, then follow Sections 3 and 4 inside `/app`.
 
 ## 6. Citation
 
