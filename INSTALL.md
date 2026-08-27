@@ -1,12 +1,70 @@
 # Installation
 
-GCPO is built on verl and uses vLLM for rollout generation. The recommended
-installation is the repository Docker image, which follows the environment
-strategy used by [SDPO](https://github.com/lasgroup/SDPO): start from a
-prebuilt NVIDIA vLLM stack, add an exact upper-layer dependency lock, and
-install the repository with `--no-deps` so pip cannot replace the GPU stack.
+GCPO is built on verl and uses vLLM for rollout generation. Two installation
+paths are tested: a native Linux x86_64 / Python 3.12 environment based on the
+public vLLM 0.12 release, and an NVIDIA NGC image following the environment
+strategy used by [SDPO](https://github.com/lasgroup/SDPO). Keep their lock
+files separate and install the repository with `--no-deps` so pip cannot
+replace the selected GPU stack.
 
-## Recommended: Docker
+## Native Linux x86_64
+
+Requirements:
+
+- Linux x86_64 with NVIDIA GPUs and a driver compatible with CUDA 12.8;
+- Conda; and
+- outbound access to the Python package index and GitHub Releases during setup.
+
+Create the environment and install the native lock in one resolution pass:
+
+```bash
+conda create -n gcpo python=3.12 -y
+conda activate gcpo
+python -m pip install -r requirements-native.txt
+```
+
+Install the official FlashAttention 2.8.1 wheel built for Python 3.12,
+PyTorch 2.9, and CUDA 12. The checksum below is published by the GitHub
+Release API and prevents a partial or altered download from being installed:
+
+```bash
+FLASH_ATTN_WHEEL=/tmp/flash_attn-2.8.1+cu12torch2.9cxx11abiTRUE-cp312-cp312-linux_x86_64.whl
+curl -fL --retry 5 \
+  -o "${FLASH_ATTN_WHEEL}" \
+  "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.1/flash_attn-2.8.1%2Bcu12torch2.9cxx11abiTRUE-cp312-cp312-linux_x86_64.whl"
+echo "88ea50d97200b1b0b74f100c5525ae8e1827aae5fd41b488f4fa7489725b4e56  ${FLASH_ATTN_WHEEL}" | sha256sum --check
+python -m pip install --no-deps "${FLASH_ATTN_WHEEL}"
+python -m pip install -e . --no-deps --no-build-isolation
+python -m pip check
+```
+
+The native environment validated for this repository contains:
+
+| Component | Version |
+| --- | --- |
+| Python | `3.12` |
+| CUDA runtime packaged with PyTorch | `12.8` |
+| PyTorch | `2.9.0` |
+| vLLM | `0.12.0` |
+| FlashAttention | `2.8.1` |
+| FlashInfer | `0.5.3` |
+| NVIDIA CUTLASS DSL | `4.3.4` |
+| Numba / llvmlite | `0.61.2` / `0.44.0` |
+
+The prebuilt FlashAttention filename is specific to Linux x86_64, Python
+3.12, and PyTorch 2.9. For another Python version or architecture, use a
+matching official release asset or use the Docker path rather than building
+against a mismatched local CUDA toolkit.
+
+Hugging Face libraries need a writable cache for model, dataset, lock, and
+generated-module files. On a shared machine, set it explicitly before data
+preparation or training:
+
+```bash
+export HF_HOME=/path/to/huggingface-cache
+```
+
+## Docker
 
 Requirements:
 
@@ -69,33 +127,11 @@ docker build \
   -t gcpo:latest .
 ```
 
-## Advanced: native Python environment
-
-The package metadata supports Python 3.10-3.13, with Python 3.12 recommended.
-A native installation is appropriate only when the machine already has a
-mutually compatible CUDA, PyTorch, vLLM, FlashAttention, FlashInfer, CUTLASS,
-xFormers, and Triton stack. Installing or upgrading those packages separately
-can produce an importable environment that still fails when vLLM loads a model
-or launches a CUDA kernel.
-
-After provisioning a compatible GPU stack, install the same upper layer and
-overlay GCPO without dependency re-resolution:
-
-```bash
-conda create -n gcpo python=3.12 -y
-conda activate gcpo
-
-# Provision the mutually compatible GPU stack before these commands.
-python -m pip install -r requirements-ngc.txt
-python -m pip install -e . --no-deps --no-build-isolation
-python -m pip check
-```
-
-`requirements-ngc.txt` is validated against the NGC version matrix above. If
-the native GPU stack differs, derive and test a complete lock for that stack
-instead of mixing individual wheels into this one. The optional dependency
-bounds in `setup.py` prevent the known vLLM/FlashAttention incompatibility, but
-they are not a substitute for an end-to-end environment lock.
+`requirements-ngc.txt` is only for the NGC base image. Public vLLM 0.12 pins
+Numba 0.61.2, whose compatible llvmlite version in the native lock is 0.44.0,
+while the NGC/SDPO upper layer uses newer versions. Installing the NGC lock
+into the native environment creates a real dependency conflict. Use
+`requirements-native.txt` for native installation.
 
 ## Verify
 

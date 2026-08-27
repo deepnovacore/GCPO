@@ -23,17 +23,37 @@ For environment details and dependency guidance, see [INSTALL.md](INSTALL.md).
 
 ## 2. Installation
 
-GCPO targets Linux with NVIDIA GPUs for practical LLM training. Python 3.10-3.13 is supported by the package metadata, and Python 3.12 is the recommended and container-tested default.
+GCPO targets Linux with NVIDIA GPUs for practical LLM training. Python 3.10-3.13 is supported by the package metadata, and Python 3.12 is the tested default for both installation paths.
 
-The recommended installation uses the repository Dockerfile. It follows the [SDPO](https://github.com/lasgroup/SDPO) environment strategy and starts from NVIDIA's prebuilt vLLM image so that CUDA, PyTorch, vLLM, FlashAttention, FlashInfer, CUTLASS, xFormers, and Triton come from one compatible stack.
+For a native Linux x86_64 environment, install the tested public vLLM 0.12 stack and the matching official FlashAttention wheel before overlaying GCPO:
 
 ```bash
 git clone https://github.com/deepnovacore/GCPO.git
 cd GCPO
+
+conda create -n gcpo python=3.12 -y
+conda activate gcpo
+python -m pip install -r requirements-native.txt
+
+FLASH_ATTN_WHEEL=/tmp/flash_attn-2.8.1+cu12torch2.9cxx11abiTRUE-cp312-cp312-linux_x86_64.whl
+curl -fL --retry 5 \
+  -o "${FLASH_ATTN_WHEEL}" \
+  "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.1/flash_attn-2.8.1%2Bcu12torch2.9cxx11abiTRUE-cp312-cp312-linux_x86_64.whl"
+echo "88ea50d97200b1b0b74f100c5525ae8e1827aae5fd41b488f4fa7489725b4e56  ${FLASH_ATTN_WHEEL}" | sha256sum --check
+python -m pip install --no-deps "${FLASH_ATTN_WHEEL}"
+python -m pip install -e . --no-deps --no-build-isolation
+python -m pip check
+```
+
+The Docker path follows the [SDPO](https://github.com/lasgroup/SDPO) environment strategy and starts from NVIDIA's prebuilt vLLM image:
+
+```bash
 docker build -t gcpo:latest .
 ```
 
-Do not independently upgrade or reinstall the GPU-stack packages inside this image. In particular, mixing an arbitrary FlashAttention wheel with a different CUTLASS DSL release can fail during vLLM model loading. See [INSTALL.md](INSTALL.md) for the verified version matrix, native-environment guidance, and verification commands.
+Do not mix `requirements-native.txt` with the NGC image's `requirements-ngc.txt`, or independently replace GPU-stack packages after installation. See [INSTALL.md](INSTALL.md) for both verified version matrices, architecture notes, and verification commands.
+
+On a shared machine, point `HF_HOME` to a writable location before downloading models or preparing data, for example `export HF_HOME=/path/to/huggingface-cache`.
 
 ## 3. Data Preparation
 
